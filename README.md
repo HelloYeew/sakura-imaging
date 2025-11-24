@@ -21,4 +21,8 @@ So if your application does not require color correct image rendering or advance
 
 ## License
 
+This extension is part of the Sakura Framework, see [the main repository](https://github.com/HelloYeew/sakura) for more information.
+
+This project is licensed under the MIT license. Please see [the license file](LICENSE) for more information. tl;dr you can do whatever you want as long as you include the original copyright and license notice in any copy of the software/source.
+
 This extension use [ImageMagick](https://imagemagick.org/) with [Magick.NET](https://github.com/dlemstra/Magick.NET). See [ImageMagick License](https://github.com/ImageMagick/ImageMagick/blob/main/LICENSE) and [Magick.NET License](https://github.com/dlemstra/Magick.NET/blob/main/License.txt) (Apache License 2.0) for more information.
