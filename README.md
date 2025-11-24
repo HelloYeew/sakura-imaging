@@ -16,6 +16,7 @@ This extension aims to support for developer who wants to build an application t
 _Will add more technical details here later..._
 
 Since this extension aim for color correct and more feature on imaging. The image loading process may be a bit slower than the default image loader in the core framework on some case but it should not be a big difference on most image files.
+Also the size of the library using in this extension is a lot bigger (around 92 MB in NuGet) than the core framework (around 1.5 MB in NuGet).
 So if your application does not require color correct image rendering or advanced image processing features, you can just use the default image loader in the core Sakura Framework.
 
 ![Test with default sRGB image](readme/sakura-srgb-resized.jpg)
