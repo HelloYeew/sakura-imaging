@@ -13,6 +13,8 @@ The Sakura Framework already have the basic image loading and rendering capabili
 The [default image loader] in the core framework can be render correctly on most picture. But some pictures that has the [ICC profile](https://en.wikipedia.org/wiki/ICC_profile) embeded in it may not be rendered correctly and make the color a bit "washed out" or "off" from the original picture since the default image loader only load the raw pixel data without considering the color profile.
 This extension aims to support for developer who wants to build an application that requires the correct color representation from the image file and want more image processing features to use in their application.
 
+_Will add more technical details here later..._
+
 Since this extension aim for color correct and more feature on imaging. The image loading process may be a bit slower than the default image loader in the core framework on some case but it should not be a big difference on most image files.
 So if your application does not require color correct image rendering or advanced image processing features, you can just use the default image loader in the core Sakura Framework.
 
