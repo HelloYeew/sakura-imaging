@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using ImageMagick;
 using Sakura.Framework.Graphics.Textures;
-using Silk.NET.OpenGL;
 using Texture = Sakura.Framework.Graphics.Textures.Texture;
 
 namespace Sakura.Framework.Imaging.ImageMagick;
@@ -17,7 +16,7 @@ namespace Sakura.Framework.Imaging.ImageMagick;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public class GLMagickEditableImage : IDisposable
 {
-    private readonly GL gl;
+    private readonly ITextureManager textureManager;
 
     /// <summary>
     /// The underlying ImageMagick image
@@ -30,12 +29,32 @@ public class GLMagickEditableImage : IDisposable
     /// </summary>
     public Texture? PreviewTexture { get; private set; }
 
-    public GLMagickEditableImage(GL gl)
+    public GLMagickEditableImage(ITextureManager textureManager)
     {
-        this.gl = gl;
+        this.textureManager = textureManager;
     }
 
-    public void Load(Stream stream)
+    /// <summary>
+    /// Load a document directly from file path.
+    /// Will auto-detect RAW formats and apply proper settings based on file extension.
+    /// </summary>
+    /// <param name="path">The file path to load from.</param>
+    public void Load(string path)
+    {
+        Image = new MagickImage(path);
+        Image.AutoOrient();
+        SyncToGpu();
+    }
+
+    /// <summary>
+    /// Load a document from a stream.
+    /// </summary>
+    /// <param name="stream">The source of <see cref="Stream"/></param>
+    /// <param name="formatHint">
+    /// Optional file extension hint for RAW format detection (e.g., ".nef", ".cr2").
+    /// Required for RAW formats to make proper adjustments.
+    /// </param>
+    public void Load(Stream stream, string? formatHint = null)
     {
         Image = new MagickImage(stream);
         Image.AutoOrient();
@@ -59,31 +78,21 @@ public class GLMagickEditableImage : IDisposable
     {
         if (Image == null) return;
 
-        // Clone the image so we don't mess up the Master data
         using var viewCopy = (MagickImage)Image.Clone();
+        if (viewCopy.ColorSpace != ColorSpace.sRGB)
+            viewCopy.TransformColorSpace(ColorProfiles.SRGB); //
 
-        // Convert the copy data to sRGB for the monitor
-        // This ensures the user sees "Correct" colors on screen,
-        // but the master image (Image object above) retains the original color profile.
-        viewCopy.TransformColorSpace(ColorProfiles.SRGB);
-
-        // Downsample to 8-bit RGBA for OpenGL
         if (viewCopy.Format != MagickFormat.Rgba)
             viewCopy.Format = MagickFormat.Rgba;
 
         byte[] rawBytes = viewCopy.ToByteArray(MagickFormat.Rgba);
 
-        // Update the Texture
-        // Dispose the old texture and create a new one
-        var oldTexture = PreviewTexture;
-
-        var glTexture = new GLTexture(gl, (int)viewCopy.Width, (int)viewCopy.Height, rawBytes);
-        PreviewTexture = new Texture(glTexture);
-
-        if (oldTexture != null && oldTexture.GlTexture != null)
+        if (PreviewTexture != null)
         {
-            oldTexture.GlTexture.Dispose();
+            PreviewTexture.GlTexture?.Dispose();
         }
+
+        PreviewTexture = textureManager.FromPixelData((int)viewCopy.Width, (int)viewCopy.Height, rawBytes);
     }
 
     public void Dispose()
