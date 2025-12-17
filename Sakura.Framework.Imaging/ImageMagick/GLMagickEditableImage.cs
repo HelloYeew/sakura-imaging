@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using ImageMagick;
+using ImageMagick.Formats;
 using Sakura.Framework.Graphics.Textures;
 using Texture = Sakura.Framework.Graphics.Textures.Texture;
 
@@ -18,15 +19,7 @@ public class GLMagickEditableImage : IDisposable
 {
     private readonly ITextureManager textureManager;
 
-    /// <summary>
-    /// The underlying ImageMagick image
-    /// use for storing the high-precision (Q16) and original image data (color space etc.)
-    /// </summary>
     public MagickImage? Image { get; private set; }
-
-    /// <summary>
-    /// Sakura's <see cref="Texture"/> for using in drawable objects and use for rendering.
-    /// </summary>
     public Texture? PreviewTexture { get; private set; }
 
     public GLMagickEditableImage(ITextureManager textureManager)
@@ -34,36 +27,76 @@ public class GLMagickEditableImage : IDisposable
         this.textureManager = textureManager;
     }
 
-    /// <summary>
-    /// Load a document directly from file path.
-    /// Will auto-detect RAW formats and apply proper settings based on file extension.
-    /// </summary>
-    /// <param name="path">The file path to load from.</param>
     public void Load(string path)
     {
-        Image = new MagickImage(path);
-        Image.AutoOrient();
+        var settings = GetRawSettings(Path.GetExtension(path));
+        Image = settings != null ? new MagickImage(path, settings) : new MagickImage(path);
+
+        PrepareImage();
         SyncToGpu();
     }
 
-    /// <summary>
-    /// Load a document from a stream.
-    /// </summary>
-    /// <param name="stream">The source of <see cref="Stream"/></param>
-    /// <param name="formatHint">
-    /// Optional file extension hint for RAW format detection (e.g., ".nef", ".cr2").
-    /// Required for RAW formats to make proper adjustments.
-    /// </param>
     public void Load(Stream stream, string? formatHint = null)
     {
-        Image = new MagickImage(stream);
-        Image.AutoOrient();
+        var settings = GetRawSettings(formatHint);
+        Image = settings != null ? new MagickImage(stream, settings) : new MagickImage(stream);
+
+        PrepareImage();
         SyncToGpu();
     }
 
-    /// <summary>
-    /// Applies an edit operation and updates the GPU texture.
-    /// </summary>
+    private void PrepareImage()
+    {
+        if (Image == null) return;
+
+        // Orient the image (Portrait/Landscape)
+        Image.AutoOrient();
+
+        // Remove Alpha channel.
+        // RAW files often load with a standard opaque alpha channel that can sometimes
+        // be misinterpreted by OpenGL blending as transparent.
+        Image.Alpha(AlphaOption.Off);
+    }
+
+    private MagickReadSettings? GetRawSettings(string? extension)
+    {
+        if (string.IsNullOrWhiteSpace(extension)) return null;
+        var ext = extension.TrimStart('.').ToLowerInvariant();
+
+        // Map common extensions to their specific MagickFormats.
+        MagickFormat format = ext switch
+        {
+            "nef" => MagickFormat.Nef,
+            "cr2" => MagickFormat.Cr2,
+            "dng" => MagickFormat.Dng,
+            "arw" => MagickFormat.Arw,
+            "raf" => MagickFormat.Raf,
+            "orf" => MagickFormat.Orf,
+            "rw2" => MagickFormat.Rw2,
+            _ => MagickFormat.Unknown
+        };
+
+        if (format != MagickFormat.Unknown)
+        {
+            return new MagickReadSettings
+            {
+                Format = format,
+                Defines = new DngReadDefines
+                {
+                    // The purple tint often happens when "CameraWhitebalance" fails to read the metadata
+                    // multipliers correctly, resulting in Green=0 (Magenta).
+                    // AutoWhitebalance uses the image data to find gray points.
+                    UseAutoWhiteBalance = true,
+
+                    // Ensure the output is in sRGB color space.
+                    OutputColor = DngOutputColor.SRGB
+                }
+            };
+        }
+
+        return null;
+    }
+
     public void Apply(Action<MagickImage> editOperation)
     {
         if (Image == null) return;
@@ -71,17 +104,21 @@ public class GLMagickEditableImage : IDisposable
         SyncToGpu();
     }
 
-    /// <summary>
-    /// Takes the High-Res CPU image, converts a copy to sRGB, and uploads to GPU.
-    /// </summary>
     private void SyncToGpu()
     {
         if (Image == null) return;
 
+        // Clone so we don't modify the original RAW data (which might be 16-bit)
         using var viewCopy = (MagickImage)Image.Clone();
-        if (viewCopy.ColorSpace != ColorSpace.sRGB)
-            viewCopy.TransformColorSpace(ColorProfiles.SRGB); //
 
+        // Force sRGB Color Space
+        if (viewCopy.ColorSpace != ColorSpace.sRGB)
+            viewCopy.TransformColorSpace(ColorProfiles.SRGB);
+
+        // Force 8-bit Depth
+        viewCopy.Depth = 8;
+
+        // 3. Ensure RGBA Layout
         if (viewCopy.Format != MagickFormat.Rgba)
             viewCopy.Format = MagickFormat.Rgba;
 
