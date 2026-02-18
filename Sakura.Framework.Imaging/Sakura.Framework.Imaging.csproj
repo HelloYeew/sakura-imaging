@@ -8,6 +8,6 @@
     <ProjectReference Include="..\..\sakura\Sakura.Framework\Sakura.Framework.csproj" />
   </ItemGroup>
   <ItemGroup Label="Package References">
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.0" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.2" />
   </ItemGroup>
 </Project>
