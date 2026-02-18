@@ -19,6 +19,8 @@ public class GLMagickEditableImage : IDisposable
 {
     private readonly ITextureManager textureManager;
 
+    private MagickImage? originalImage;
+
     public MagickImage? Image { get; private set; }
     public Texture? PreviewTexture { get; private set; }
 
@@ -30,32 +32,26 @@ public class GLMagickEditableImage : IDisposable
     public void Load(string path)
     {
         var settings = GetRawSettings(Path.GetExtension(path));
-        Image = settings != null ? new MagickImage(path, settings) : new MagickImage(path);
-
-        PrepareImage();
+        originalImage = settings != null ? new MagickImage(path, settings) : new MagickImage(path);
+        PrepareImage(originalImage);
+        Image = new MagickImage(originalImage);
         SyncToGpu();
     }
 
     public void Load(Stream stream, string? formatHint = null)
     {
         var settings = GetRawSettings(formatHint);
-        Image = settings != null ? new MagickImage(stream, settings) : new MagickImage(stream);
-
-        PrepareImage();
+        originalImage = settings != null ? new MagickImage(stream, settings) : new MagickImage(stream);
+        PrepareImage(originalImage);
+        Image = new MagickImage(originalImage);
         SyncToGpu();
     }
 
-    private void PrepareImage()
+    private void PrepareImage(MagickImage? targetImage)
     {
-        if (Image == null) return;
-
-        // Orient the image (Portrait/Landscape)
-        Image.AutoOrient();
-
-        // Remove Alpha channel.
-        // RAW files often load with a standard opaque alpha channel that can sometimes
-        // be misinterpreted by OpenGL blending as transparent.
-        Image.Alpha(AlphaOption.Off);
+        if (targetImage == null) return;
+        targetImage.AutoOrient();
+        targetImage.Alpha(AlphaOption.Off);
     }
 
     private MagickReadSettings? GetRawSettings(string? extension)
@@ -99,7 +95,9 @@ public class GLMagickEditableImage : IDisposable
 
     public void Apply(Action<MagickImage> editOperation)
     {
-        if (Image == null) return;
+        if (originalImage == null) return;
+        Image?.Dispose();
+        Image = new MagickImage(originalImage);
         editOperation(Image);
         SyncToGpu();
     }
@@ -134,6 +132,7 @@ public class GLMagickEditableImage : IDisposable
 
     public void Dispose()
     {
+        originalImage?.Dispose();
         Image?.Dispose();
         if (PreviewTexture?.GlTexture != null)
             PreviewTexture.GlTexture.Dispose();
