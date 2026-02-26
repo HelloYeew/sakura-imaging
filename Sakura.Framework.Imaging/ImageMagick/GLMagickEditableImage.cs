@@ -24,6 +24,8 @@ public class GLMagickEditableImage : IDisposable
     public MagickImage? Image { get; private set; }
     public Texture? PreviewTexture { get; private set; }
 
+    private readonly string previewCacheKey = $"MagickPreview_{Guid.NewGuid()}";
+
     public GLMagickEditableImage(ITextureManager textureManager)
     {
         this.textureManager = textureManager;
@@ -122,12 +124,7 @@ public class GLMagickEditableImage : IDisposable
 
         byte[] rawBytes = viewCopy.ToByteArray(MagickFormat.Rgba);
 
-        if (PreviewTexture != null)
-        {
-            PreviewTexture.GlTexture?.Dispose();
-        }
-
-        PreviewTexture = textureManager.FromPixelData((int)viewCopy.Width, (int)viewCopy.Height, rawBytes);
+        PreviewTexture = textureManager.FromPixelData((int)viewCopy.Width, (int)viewCopy.Height, rawBytes, previewCacheKey);
     }
 
     public void Dispose()
