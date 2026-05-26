@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using ImageMagick;
 using ImageMagick.Formats;
+using Sakura.Framework.Graphics.Rendering;
 using Sakura.Framework.Graphics.Textures;
 using Texture = Sakura.Framework.Graphics.Textures.Texture;
 
@@ -18,6 +19,7 @@ namespace Sakura.Framework.Imaging.ImageMagick;
 public class GLMagickEditableImage : IDisposable
 {
     private readonly ITextureManager textureManager;
+    private readonly IRenderer renderer;
 
     private MagickImage? originalImage;
 
@@ -25,14 +27,18 @@ public class GLMagickEditableImage : IDisposable
     public Texture? PreviewTexture { get; private set; }
 
     private readonly string previewCacheKey = $"MagickPreview_{Guid.NewGuid()}";
+    public event Action<Texture>? OnTextureUpdated;
 
-    public GLMagickEditableImage(ITextureManager textureManager)
+    public GLMagickEditableImage(ITextureManager textureManager, IRenderer renderer)
     {
         this.textureManager = textureManager;
+        this.renderer = renderer;
     }
 
     public void Load(string path)
     {
+        originalImage?.Dispose();
+        Image?.Dispose();
         var settings = GetRawSettings(Path.GetExtension(path));
         originalImage = settings != null ? new MagickImage(path, settings) : new MagickImage(path);
         PrepareImage(originalImage);
@@ -42,6 +48,8 @@ public class GLMagickEditableImage : IDisposable
 
     public void Load(Stream stream, string? formatHint = null)
     {
+        originalImage?.Dispose();
+        Image?.Dispose();
         var settings = GetRawSettings(formatHint);
         originalImage = settings != null ? new MagickImage(stream, settings) : new MagickImage(stream);
         PrepareImage(originalImage);
@@ -115,23 +123,30 @@ public class GLMagickEditableImage : IDisposable
         if (viewCopy.ColorSpace != ColorSpace.sRGB)
             viewCopy.TransformColorSpace(ColorProfiles.SRGB);
 
-        // Force 8-bit Depth
-        viewCopy.Depth = 8;
-
-        // 3. Ensure RGBA Layout
-        if (viewCopy.Format != MagickFormat.Rgba)
-            viewCopy.Format = MagickFormat.Rgba;
-
         byte[] rawBytes = viewCopy.ToByteArray(MagickFormat.Rgba);
 
-        PreviewTexture = textureManager.FromPixelData((int)viewCopy.Width, (int)viewCopy.Height, rawBytes, previewCacheKey);
+        int width = (int)viewCopy.Width;
+        int height = (int)viewCopy.Height;
+
+        renderer.ScheduleToDrawThread(() =>
+        {
+            if (PreviewTexture?.GlTexture != null)
+            {
+                PreviewTexture.GlTexture.Dispose();
+            }
+            PreviewTexture = textureManager.FromPixelData(width, height, rawBytes, previewCacheKey);
+            OnTextureUpdated?.Invoke(PreviewTexture);
+        });
     }
 
     public void Dispose()
     {
         originalImage?.Dispose();
         Image?.Dispose();
-        if (PreviewTexture?.GlTexture != null)
-            PreviewTexture.GlTexture.Dispose();
+        renderer.ScheduleToDrawThread(() =>
+        {
+            if (PreviewTexture?.GlTexture != null)
+                PreviewTexture.GlTexture.Dispose();
+        });
     }
 }
