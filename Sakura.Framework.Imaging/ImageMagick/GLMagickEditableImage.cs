@@ -130,10 +130,7 @@ public class GLMagickEditableImage : IDisposable
 
         renderer.ScheduleToDrawThread(() =>
         {
-            if (PreviewTexture?.GlTexture != null)
-            {
-                PreviewTexture.GlTexture.Dispose();
-            }
+            PreviewTexture?.BackendTexture?.Dispose();
             PreviewTexture = textureManager.FromPixelData(width, height, rawBytes, previewCacheKey);
             OnTextureUpdated?.Invoke(PreviewTexture);
         });
@@ -145,8 +142,7 @@ public class GLMagickEditableImage : IDisposable
         Image?.Dispose();
         renderer.ScheduleToDrawThread(() =>
         {
-            if (PreviewTexture?.GlTexture != null)
-                PreviewTexture.GlTexture.Dispose();
+            PreviewTexture?.BackendTexture?.Dispose();
         });
     }
 }
