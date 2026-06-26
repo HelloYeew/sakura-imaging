@@ -13,7 +13,7 @@ using Texture = Sakura.Framework.Graphics.Textures.Texture;
 namespace Sakura.Framework.Imaging.ImageMagick;
 
 /// <summary>
-/// An object representing an ImageMagick object that can be edited, manipulated, and use OpenGL to render.
+/// An object representing an ImageMagick object that can be edited, manipulated, and render.
 /// </summary>
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public class MagickEditableImage : IDisposable
