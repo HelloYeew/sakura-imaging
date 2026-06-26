@@ -16,7 +16,7 @@ namespace Sakura.Framework.Imaging.ImageMagick;
 /// An object representing an ImageMagick object that can be edited, manipulated, and use OpenGL to render.
 /// </summary>
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public class GLMagickEditableImage : IDisposable
+public class MagickEditableImage : IDisposable
 {
     private readonly ITextureManager textureManager;
     private readonly IRenderer renderer;
@@ -29,7 +29,7 @@ public class GLMagickEditableImage : IDisposable
     private readonly string previewCacheKey = $"MagickPreview_{Guid.NewGuid()}";
     public event Action<Texture>? OnTextureUpdated;
 
-    public GLMagickEditableImage(ITextureManager textureManager, IRenderer renderer)
+    public MagickEditableImage(ITextureManager textureManager, IRenderer renderer)
     {
         this.textureManager = textureManager;
         this.renderer = renderer;
