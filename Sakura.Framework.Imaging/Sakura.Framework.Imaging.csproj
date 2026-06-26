@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup Label="Project References">
-    <PackageReference Include="Sakura.Framework" Version="2026.608.0" />
+    <PackageReference Include="Sakura.Framework" Version="2026.624.0" />
   </ItemGroup>
   <ItemGroup Label="Package References">
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.14.0" />
